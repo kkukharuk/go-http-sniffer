@@ -3,6 +3,7 @@ package router
 import (
 	"fmt"
 	"git.kukharuk.ru/kkukharuk/go-http-sniffer/logger"
+	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -21,7 +22,9 @@ func (h rootHandler) httpClient(r *http.Request, requestBody []byte) (*http.Resp
 	var err error
 	var responseBody []byte
 	var newFileData string
-	resTmpl := `<= New-Request
+	uuid := r.Header.Get("Request-ID")
+	r.Header.Del("Request-ID")
+	resTmpl := `<= Sesponse (UUID: %s)
    Response:
      ResponseCode: %d
      Headers:
@@ -69,7 +72,7 @@ func (h rootHandler) httpClient(r *http.Request, requestBody []byte) (*http.Resp
 		}
 		i++
 	}
-	newFileData += fmt.Sprintf(resTmpl, resp.StatusCode, headers, string(responseBody))
+	newFileData += fmt.Sprintf(resTmpl, uuid, resp.StatusCode, headers, string(responseBody))
 	err = ioutil.WriteFile(h.logFile, []byte(newFileData), 0766)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error write request info to log-file: %s", err.Error()))
@@ -80,8 +83,9 @@ func (h rootHandler) httpClient(r *http.Request, requestBody []byte) (*http.Resp
 }
 
 func (h rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	uuid := uuid.New()
 	var newFileData string
-	resTmpl := `=> New-Request
+	resTmpl := `=> Request (UUID: %s)
    Request:
      Request URI: %s
      Method: %s
@@ -112,13 +116,14 @@ func (h rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error read request body: %s", err.Error()))
 	}
-	newFileData += fmt.Sprintf(resTmpl, r.RequestURI, r.Method, headers, string(requestBody))
+	newFileData += fmt.Sprintf(resTmpl, uuid.String(), r.RequestURI, r.Method, headers, string(requestBody))
 	err = ioutil.WriteFile(h.logFile, []byte(newFileData), 0766)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error write request info to log-file: %s", err.Error()))
 	} else {
 		logger.Debug("Write request info to log-file is successfully complite")
 	}
+	r.Header.Add("Request-ID", uuid.String())
 	var targetResponse *http.Response
 	var responseBody []byte
 	if len(requestBody) != 0 {
