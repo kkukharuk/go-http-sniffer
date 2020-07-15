@@ -24,7 +24,7 @@ func (h rootHandler) httpClient(r *http.Request, requestBody []byte) (*http.Resp
 	var newFileData string
 	uuid := r.Header.Get("Request-ID")
 	r.Header.Del("Request-ID")
-	resTmpl := `<= Sesponse (UUID: %s)
+	resTmpl := `<= Response (UUID: %s)
    Response:
      ResponseCode: %d
      Headers:
