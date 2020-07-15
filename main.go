@@ -10,6 +10,8 @@ import (
 )
 
 var (
+	host        string
+	port        int
 	enableTls   bool
 	certificate string
 	key         string
@@ -19,6 +21,8 @@ var (
 
 func init() {
 	logger.Init("Go-HTTP-Sniffer", "0.0.1-betta", logger.LogDetail, logger.LogLevelDebug)
+	flag.StringVar(&host, "host", "localhost", "Listen sniffer host")
+	flag.IntVar(&port, "port", 8080, "Listen sniffer port")
 	flag.BoolVar(&enableTls, "tls", false, "Enable TLS")
 	flag.StringVar(&certificate, "certfile", "./file.cer", "Certificate file")
 	flag.StringVar(&key, "keyfile", "./file.key", "Key file")
@@ -35,17 +39,22 @@ func init() {
 		} else if errCert != nil && errKey != nil {
 			logger.Fatal(fmt.Sprintf("'%s' and ''%s: File not found", certificate, key))
 		}
+		if port == 8080 {
+			port = 8443
+		}
 	}
 }
 
 func main() {
 	r := router.New(targetUrl, logFile)
 	if enableTls {
-		if err := http.ListenAndServeTLS(":8443", certificate, key, r.RootHandler()); err != nil {
+		logger.Info(fmt.Sprintf("Running server on htts://%s:%d", host, port))
+		if err := http.ListenAndServeTLS(fmt.Sprintf("%s:%d", host, port), certificate, key, r.RootHandler()); err != nil {
 			panic(err)
 		}
 	} else {
-		if err := http.ListenAndServe(":8080", r.RootHandler()); err != nil {
+		logger.Info(fmt.Sprintf("Running server on http://%s:%d", host, port))
+		if err := http.ListenAndServe(fmt.Sprintf("%s:%d", host, port), r.RootHandler()); err != nil {
 			panic(err)
 		}
 	}
