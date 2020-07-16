@@ -22,7 +22,7 @@ func (h rootHandler) httpClient(r *http.Request, requestBody []byte) (*http.Resp
 	var err error
 	var responseBody []byte
 	var newFileData string
-	uuid := r.Header.Get("Request-ID")
+	rqId := r.Header.Get("Request-ID")
 	r.Header.Del("Request-ID")
 	resTmpl := `<= Response (UUID: %s)
    Response:
@@ -61,6 +61,15 @@ func (h rootHandler) httpClient(r *http.Request, requestBody []byte) (*http.Resp
 		return nil, responseBody, err
 	}
 	defer resp.Body.Close()
+	dataBodyFileName := "-"
+	if len(requestBody) != 0 {
+		dataBodyFileName = fmt.Sprintf("%s.rsdata", rqId)
+		if err := ioutil.WriteFile(fmt.Sprintf("./%s", dataBodyFileName), requestBody, 0644); err != nil {
+			logger.Error(fmt.Sprintf("Error write response body (rqId: %s) in file (%s): %s", rqId, dataBodyFileName, err.Error()))
+		} else {
+			logger.Debug(fmt.Sprintf("Write response body (rqId: %s) in file is successfully complete", rqId))
+		}
+	}
 	_ = ioutil.WriteFile("test/test.json", responseBody, 0766)
 	var headers string
 	headersCount := len(resp.Header)
@@ -72,18 +81,18 @@ func (h rootHandler) httpClient(r *http.Request, requestBody []byte) (*http.Resp
 		}
 		i++
 	}
-	newFileData += fmt.Sprintf(resTmpl, uuid, resp.StatusCode, headers, string(responseBody))
+	newFileData += fmt.Sprintf(resTmpl, rqId, resp.StatusCode, headers, dataBodyFileName)
 	err = ioutil.WriteFile(h.logFile, []byte(newFileData), 0766)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error write request info to log-file: %s", err.Error()))
 	} else {
-		logger.Debug("Write request info to log-file is successfully complite")
+		logger.Debug("Write request info to log-file is successfully complete")
 	}
 	return resp, responseBody, nil
 }
 
 func (h rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	uuid := uuid.New()
+	rqId := uuid.New()
 	var newFileData string
 	resTmpl := `=> Request (UUID: %s)
    Request:
@@ -116,14 +125,23 @@ func (h rootHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error read request body: %s", err.Error()))
 	}
-	newFileData += fmt.Sprintf(resTmpl, uuid.String(), r.RequestURI, r.Method, headers, string(requestBody))
+	dataBodyFileName := "-"
+	if len(requestBody) != 0 {
+		dataBodyFileName = fmt.Sprintf("%s.rqdata", rqId)
+		if err := ioutil.WriteFile(fmt.Sprintf("./%s", dataBodyFileName), requestBody, 0644); err != nil {
+			logger.Error(fmt.Sprintf("Error write request body (rqId: %s) in file (%s): %s", rqId, dataBodyFileName, err.Error()))
+		} else {
+			logger.Debug(fmt.Sprintf("Write request body (rqId: %s) in file is successfully complete", rqId))
+		}
+	}
+	newFileData += fmt.Sprintf(resTmpl, rqId.String(), r.RequestURI, r.Method, headers, dataBodyFileName)
 	err = ioutil.WriteFile(h.logFile, []byte(newFileData), 0766)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Error write request info to log-file: %s", err.Error()))
 	} else {
-		logger.Debug("Write request info to log-file is successfully complite")
+		logger.Debug("Write request info to log-file is successfully complete")
 	}
-	r.Header.Add("Request-ID", uuid.String())
+	r.Header.Add("Request-ID", rqId.String())
 	var targetResponse *http.Response
 	var responseBody []byte
 	if len(requestBody) != 0 {
