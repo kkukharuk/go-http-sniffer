@@ -20,7 +20,6 @@ var (
 )
 
 func init() {
-	logger.Init("Go-HTTP-Sniffer", "0.0.1-betta", logger.LogDetail, logger.LogLevelDebug)
 	flag.StringVar(&host, "host", "localhost", "Listen sniffer host")
 	flag.IntVar(&port, "port", 8080, "Listen sniffer port")
 	flag.BoolVar(&enableTls, "tls", false, "Enable TLS")
@@ -43,6 +42,7 @@ func init() {
 			port = 8443
 		}
 	}
+	logger.Init("Go-HTTP-Sniffer", "0.0.1-betta", logger.LogDetail, logger.LogLevelDebug)
 }
 
 func main() {
